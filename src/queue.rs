@@ -16,10 +16,10 @@ pub fn queue_callback_v4(msg: &Message, state: &mut State) {
             println!("{:?}", packet);
 
             if let Some(InternetSlice::Ipv4(ipv4_header)) = packet.ip {
-                let dest_ip = format!("{}", ipv4_header.destination_addr());
+                let dest_ip = ipv4_header.destination_addr();
                 let source_ip = ipv4_header.source_addr();
 
-                if let Some(target) = state.config.mappings.get(&dest_ip) {
+                if let Some(target) = state.config.mappings.get(&dest_ip.to_string()) {
                     let tslice: TransportSlice = packet.transport.expect("Unexpected transport.");
 
                     let dport = tslice.destination_port();
