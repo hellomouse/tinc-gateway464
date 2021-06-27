@@ -9,21 +9,17 @@ use crate::state::State;
 use crate::slice::HeaderSlice;
 
 pub fn queue_callback(msg: &Message, state: &mut State) {
-    // println!("Packet received [id: 0x{:x}]\n", msg.get_id());
 
     state.count += 1;
-    // println!("count: {:?}", state.count);
-
     match SlicedPacket::from_ip(msg.get_payload()) {
         Ok(packet) => {
-            // println!("{:?}", packet);
 
             match packet.ip {
                 Some(InternetSlice::Ipv4(ipv4_header)) => {
-                    let dest_ip = format!("{}", ipv4_header.destination_addr());
-                    let source_ip = ipv4_header.source_addr();
-
                     if let Some(target) = state.config.mappings.get(&ipv4_header.destination_addr()) {
+                        if let None = packet.transport {
+                            return;
+                        }
                         let tslice = packet.transport.expect("Unexpected transport.");
 
                         let dport = tslice.destination_port();
@@ -68,13 +64,6 @@ pub fn queue_callback(msg: &Message, state: &mut State) {
 
                             packet6.extend_from_slice(packet.payload);
 
-                            let source6 = Ipv6Addr::from(source6);
-                            let dest6 = Ipv6Addr::from(dest6);
-
-                            println!("Forwarding packet {:?}:{:?} => {:?}:{:?}", source_ip, tslice, dest_ip, dport);
-                            println!("Now is {:?} => {:?}", source6, dest6);
-                            println!("New packet is {:?}", packet6);
-                            
                             // pnet does not support Layer3 IPv6
                             // The following blocks were copied from the pnet library
                             let sock = unsafe {
@@ -85,11 +74,11 @@ pub fn queue_callback(msg: &Message, state: &mut State) {
                                 return;
                             };
                             let mut caddr = unsafe { std::mem::zeroed() };
-                            let sockaddr = SocketAddr::V6(SocketAddrV6::new(dest6, 0, 0, 0));
+                            let sockaddr = SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::from(dest6), 0, 0, 0));
                             let slen = pnet_sys::addr_to_sockaddr(sockaddr, &mut caddr);
                             let caddr_ptr = (&caddr as *const pnet_sys::SockAddrStorage) as *const pnet_sys::SockAddr;
-                            println!("Send status: {:?}", send_to(sock, &packet6, caddr_ptr, slen));
-                            
+                            send_to(sock, &packet6, caddr_ptr, slen).expect("The translated packet failed to deliver");
+  
                             state.forwarded += 1;
                             return;
                      }
@@ -101,7 +90,6 @@ pub fn queue_callback(msg: &Message, state: &mut State) {
                     }
                     let tslice = packet.transport.expect("Unexpected transport.");
                     let sport = tslice.source_port();
-                    println!("Got v6 packet! from {:?}", ipv6_header.destination_addr());
                     for (v4source, map) in &state.config.mappings {
                         for (port, _) in &map.ports {
                             if port != &sport {
@@ -141,7 +129,6 @@ pub fn queue_callback(msg: &Message, state: &mut State) {
 
                             theader.write(&mut packet4).unwrap();
                             packet4.extend_from_slice(packet.payload);
-                            println!("New packet is {:?}", packet4);
 
                             let sock = unsafe {
                                 // 255 = IPPROTO_RAW
@@ -154,7 +141,7 @@ pub fn queue_callback(msg: &Message, state: &mut State) {
                             let sockaddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::from(destination), 0));
                             let slen = pnet_sys::addr_to_sockaddr(sockaddr, &mut caddr);
                             let caddr_ptr = (&caddr as *const pnet_sys::SockAddrStorage) as *const pnet_sys::SockAddr;
-                            println!("Send status: {:?}", send_to(sock, &packet4, caddr_ptr, slen));
+                            send_to(sock, &packet4, caddr_ptr, slen).expect("The translated packet failed to deliver");
                             
                             state.forwarded += 1;
                             return;

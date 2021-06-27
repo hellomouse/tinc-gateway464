@@ -24,6 +24,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gateway464"
+version = "1.0.0"
+dependencies = [
+ "etherparse",
+ "libc",
+ "nfqueue",
+ "pnet_sys",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -113,18 +125,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
-]
-
-[[package]]
-name = "tinc-v4gateway"
-version = "0.1.0"
-dependencies = [
- "etherparse",
- "libc",
- "nfqueue",
- "pnet_sys",
- "serde",
- "serde_yaml",
 ]
 
 [[package]]
