@@ -7,30 +7,33 @@ mod slice;
 mod queue;
 
 use crate::state::{State, Config};
-use crate::queue::queue_callback_v4;
+use crate::queue::queue_callback;
 
 fn main() {
-    let yaml_config = std::fs::File::open("config.example.yaml").expect("Config file missing.");
+    let yaml_config = std::fs::File::open("config.yaml").expect("Config file missing.");
     let config: Config = serde_yaml::from_reader(yaml_config).expect("Invalid config.");
 
-    let v4queueid = config.v4queue;
+    let queueid = config.nfqueue;
 
-    let mut v4queue = nfqueue::Queue::new(State::new(config));
+    let mut queue = nfqueue::Queue::new(State::new(config));
 
-    v4queue.open();
-    v4queue.unbind(libc::AF_INET); // ignore result, failure is not critical here
+    queue.open();
+    queue.unbind(libc::AF_INET); // ignore result, failure is not critical here
+    queue.unbind(libc::AF_INET6);
 
-    let rc = v4queue.bind(libc::AF_INET);
+    let rc = queue.bind(libc::AF_INET);
+    assert!(rc == 0);
+    let rc = queue.bind(libc::AF_INET6);
     assert!(rc == 0);
 
-    v4queue.create_queue(v4queueid, queue_callback_v4);
-    v4queue.set_mode(nfqueue::CopyMode::CopyPacket, 0xffff);
+    queue.create_queue(queueid, queue_callback);
+    queue.set_mode(nfqueue::CopyMode::CopyPacket, 0xffff);
 
     println!("Initialized gateway.");
 
-    v4queue.run_loop();
+    queue.run_loop();
 
-    v4queue.close();
+    queue.close();
 
     println!("Terminated gateway.")
 }

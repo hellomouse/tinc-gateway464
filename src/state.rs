@@ -1,25 +1,19 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct PortMap {
-    pub port: u16,
-    pub addr: [u8; 10]
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct AddrMap {
     pub reverse: [u8; 2],
-    pub ports: HashMap<u16, PortMap>,
+    pub ports: HashMap<u16, Ipv6Addr>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub base: [u8; 6],
     pub magic: [u8; 4],
-    pub v4queue: u16,
-    pub v6queue: u16,
-    pub mappings: HashMap<String, AddrMap>,
+    pub nfqueue: u16,
+    pub mappings: HashMap<Ipv4Addr, AddrMap>,
 }
 
 pub struct State {
